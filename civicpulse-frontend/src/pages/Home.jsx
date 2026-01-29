@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import ChatInterface from '../components/ChatInterface';
 import ComplaintForm from '../components/ComplaintForm';
-import { Car, Trash2, Droplets, Lightbulb, Activity, ChevronDown, CheckCircle, LogOut } from 'lucide-react';
+import { Car, Trash2, Droplets, Lightbulb, Activity, ChevronDown, CheckCircle, LogOut, ThumbsUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
@@ -79,6 +79,34 @@ function Home() {
             setShowInterface(false);
         } catch (error) {
             console.error("Logout failed:", error);
+        }
+    };
+
+    const handleUpvote = async (complaintId) => {
+        try {
+            // Optimistic update
+            setRecentReports(prev => prev.map(report =>
+                report.complaint_id === complaintId
+                    ? { ...report, upvotes: (report.upvotes || 0) + 1 }
+                    : report
+            ));
+
+            const response = await fetch(`http://localhost:8000/complaints/${complaintId}/upvote`, {
+                method: 'POST',
+            });
+
+            if (!response.ok) throw new Error('Failed to upvote');
+
+            // Optional: Update with server response if needed, 
+            // but optimistic update covers it for valid cases.
+        } catch (error) {
+            console.error("Upvote failed:", error);
+            // Revert on error
+            setRecentReports(prev => prev.map(report =>
+                report.complaint_id === complaintId
+                    ? { ...report, upvotes: (report.upvotes || 0) - 1 }
+                    : report
+            ));
         }
     };
 
@@ -311,12 +339,28 @@ function Home() {
                                         <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
                                         {report.location_text || 'Unknown Location'}
                                     </div>
+
+                                    <div className="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
+                                        <button
+                                            onClick={() => handleUpvote(report.complaint_id)}
+                                            className="flex items-center gap-2 text-xs font-medium text-gray-400 hover:text-blue-400 transition-colors group"
+                                        >
+                                            <div className="p-1.5 rounded-full bg-white/5 group-hover:bg-blue-500/20 transition-colors">
+                                                <ThumbsUp className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                                            </div>
+                                            <span>{report.upvotes || 0} needs this fixed</span>
+                                        </button>
+
+                                        <button className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
+                                            View Details →
+                                        </button>
+                                    </div>
                                 </motion.div>
                             ))}
                         </div>
                     </div>
                 </div>
-            </section>
+            </section >
 
             <footer className="bg-gray-50 border-t border-gray-200 py-12">
                 <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center opacity-60">
@@ -335,7 +379,7 @@ function Home() {
                 </div>
             </footer>
 
-        </div>
+        </div >
     );
 }
 

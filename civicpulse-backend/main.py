@@ -276,6 +276,39 @@ def create_complaint(complaint: ComplaintCreate):
 
 
 # -----------------------------------------------------------------------------
+# 4) UPVOTE ENDPOINT
+# -----------------------------------------------------------------------------
+@app.post("/complaints/{complaint_id}/upvote")
+def upvote_complaint(complaint_id: str):
+    """
+    Increments the upvote count for a specific complaint.
+    """
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Database connection not configured.")
+
+    try:
+        # 1. Get current votes
+        # Note: In a production app, use an RPC function or atomic increment to avoid race conditions.
+        # For now, we fetch-and-update.
+        res = supabase.table("complaints").select("upvotes").eq("complaint_id", complaint_id).execute()
+        
+        if not res.data:
+            raise HTTPException(status_code=404, detail="Complaint not found")
+            
+        current_votes = res.data[0].get("upvotes", 0) or 0
+        new_votes = current_votes + 1
+        
+        # 2. Update votes
+        update_res = supabase.table("complaints").update({"upvotes": new_votes}).eq("complaint_id", complaint_id).execute()
+        
+        return {"success": True, "upvotes": new_votes}
+
+    except Exception as e:
+        print(f"Upvote Error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# -----------------------------------------------------------------------------
 # 4) COMMUNICATIONS AGENT (New)
 # -----------------------------------------------------------------------------
 @app.post("/agent/notify-resolution")
