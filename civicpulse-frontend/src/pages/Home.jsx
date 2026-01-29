@@ -1,5 +1,6 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import ChatInterface from '../components/ChatInterface';
 import ComplaintForm from '../components/ComplaintForm';
 import { Car, Trash2, Droplets, Lightbulb, Activity, ChevronDown, CheckCircle, LogOut } from 'lucide-react';
@@ -11,6 +12,45 @@ function Home() {
     const [extractedData, setExtractedData] = useState(null);
     const [showInterface, setShowInterface] = useState(false);
     const interfaceRef = useRef(null);
+    const [recentReports, setRecentReports] = useState([]);
+
+    useEffect(() => {
+        const fetchReports = async () => {
+            const { data } = await supabase
+                .from('complaints')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(3);
+            if (data) setRecentReports(data);
+        };
+        fetchReports();
+
+        // Real-time listener
+        const channel = supabase
+            .channel('public:complaints_home')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'complaints' }, (payload) => {
+                setRecentReports(prev => [payload.new, ...prev].slice(0, 3));
+            })
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, []);
+
+    const getTimeAgo = (dateStr) => {
+        const diff = (new Date() - new Date(dateStr)) / 1000;
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+        if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+        return Math.floor(diff / 86400) + 'd ago';
+    };
+
+    const getStatusStyle = (status) => {
+        switch (status) {
+            case 'Resolved': return "bg-green-500/20 text-green-300 border-green-500/30";
+            case 'In Progress': return "bg-yellow-500/20 text-yellow-300 border-yellow-500/30";
+            default: return "bg-red-500/20 text-red-300 border-red-500/30";
+        }
+    };
 
     const { user, signOut } = useAuth();
     const navigate = useNavigate();
@@ -244,30 +284,34 @@ function Home() {
                                 <h3 className="text-3xl font-bold mb-2">Live Community Reports</h3>
                                 <p className="text-gray-400">See what's happening in your city right now.</p>
                             </div>
-                            <button className="px-6 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full backdrop-blur-md transition-all text-sm font-semibold">
+                            <Link to="/map" className="px-6 py-2 bg-white/10 hover:bg-white/20 border border-white/10 rounded-full backdrop-blur-md transition-all text-sm font-semibold">
                                 View All Reports
-                            </button>
+                            </Link>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {[
-                                { title: "Garbage Pileup", loc: "Sector 4, Market area", status: "Resolved", time: "2h ago", badge: "bg-green-500/20 text-green-300 border-green-500/30" },
-                                { title: "Broken Streetlight", loc: "Main Avenue", status: "In Progress", time: "5h ago", badge: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30" },
-                                { title: "Water Leakage", loc: "Housing Board Colony", status: "Pending", time: "10m ago", badge: "bg-red-500/20 text-red-300 border-red-500/30" }
-                            ].map((report, i) => (
-                                <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-2xl hover:bg-white/10 transition-colors">
+                            {recentReports.length === 0 ? (
+                                <div className="col-span-1 md:col-span-3 text-center text-gray-500 py-10 italic">Waiting for new reports...</div>
+                            ) : recentReports.map((report) => (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    key={report.complaint_id}
+                                    className="bg-white/5 border border-white/10 p-6 rounded-2xl hover:bg-white/10 transition-colors"
+                                >
                                     <div className="flex justify-between items-start mb-4">
-                                        <div className={`px-3 py-1 rounded-full text-xs font-bold border ${report.badge}`}>
-                                            {report.status}
+                                        <div className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusStyle(report.status)}`}>
+                                            {report.status || 'Pending'}
                                         </div>
-                                        <span className="text-xs text-gray-500">{report.time}</span>
+                                        <span className="text-xs text-gray-400">{getTimeAgo(report.created_at)}</span>
                                     </div>
-                                    <h4 className="font-bold text-lg mb-1">{report.title}</h4>
-                                    <div className="flex items-center gap-2 text-gray-400 text-sm">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-gray-500"></div>
-                                        {report.loc}
+                                    <h4 className="font-bold text-lg mb-1 text-white line-clamp-1">{report.issue_type}</h4>
+                                    <p className="text-sm text-gray-400 mb-3 line-clamp-2">{report.description}</p>
+                                    <div className="flex items-center gap-2 text-gray-500 text-xs">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                        {report.location_text || 'Unknown Location'}
                                     </div>
-                                </div>
+                                </motion.div>
                             ))}
                         </div>
                     </div>
