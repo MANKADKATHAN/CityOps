@@ -37,7 +37,8 @@ export default function ChatInterface({ onExtractData }) {
         setLoading(true);
 
         try {
-            const response = await fetch('/chat', {
+            const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
+            const response = await fetch(`${BACKEND_URL}/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

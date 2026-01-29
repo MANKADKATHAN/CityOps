@@ -140,7 +140,8 @@ export default function ComplaintForm({ mappedData }) {
 
                 console.log("Submitting payload:", payload);
 
-                const response = await fetch('/complaints', {
+                const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
+                const response = await fetch(`${BACKEND_URL}/complaints`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
