@@ -15,6 +15,16 @@ load_dotenv()
 
 app = FastAPI(title="CivicPulse Backend")
 
+# Enable CORS for Vercel/Any Frontend
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # -----------------------------------------------------------------------------
 # DATABASE SETUP (Supabase)
 # -----------------------------------------------------------------------------
