@@ -103,6 +103,28 @@ def health_check():
 
 
 # -----------------------------------------------------------------------------
+# 1.5) VISION ANALYSIS ENDPOINT
+# -----------------------------------------------------------------------------
+from agents import run_vision_agent
+
+class ImageAnalysisRequest(BaseModel):
+    image_url: str
+
+@app.post("/analyze-image")
+async def analyze_image(request: ImageAnalysisRequest):
+    """
+    Analyzes an image URL to detect civic issues.
+    """
+    print(f"Received image analysis request for: {request.image_url}")
+    result = run_vision_agent(request.image_url)
+    
+    if not result:
+        raise HTTPException(status_code=500, detail="Image analysis failed")
+        
+    return result
+
+
+# -----------------------------------------------------------------------------
 # 2) AI CHATBOT ENDPOINT (Gemini Powered)
 # -----------------------------------------------------------------------------
 @app.post("/chat", response_model=ChatResponse)

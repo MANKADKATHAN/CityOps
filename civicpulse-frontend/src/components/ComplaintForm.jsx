@@ -17,9 +17,11 @@ export default function ComplaintForm({ mappedData }) {
 
     const [imageFile, setImageFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
-    const [status, setStatus] = useState('idle'); // idle, submitting, success, error
+    const [status, setStatus] = useState('idle'); // idle, analyzing, submitting, success, error
     const [submitError, setSubmitError] = useState('');
     const [loadingMessage, setLoadingMessage] = useState('Processing...');
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [aiSetPriority, setAiSetPriority] = useState(false);
 
     useEffect(() => {
         if (mappedData) {
@@ -50,9 +52,10 @@ export default function ComplaintForm({ mappedData }) {
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData((prev) => ({ ...prev, [name]: value }));
+        if (name === 'priority') setAiSetPriority(false);
     };
 
-    const handleImageSelect = (e) => {
+    const handleImageSelect = async (e) => {
         const file = e.target.files[0];
         if (file) {
             // Basic validation
@@ -61,7 +64,52 @@ export default function ComplaintForm({ mappedData }) {
                 return;
             }
             setImageFile(file);
-            setPreviewUrl(URL.createObjectURL(file));
+            const localPreview = URL.createObjectURL(file);
+            setPreviewUrl(localPreview);
+
+            // AUTO-ANALYZE IMAGE
+            try {
+                setIsAnalyzing(true);
+                setLoadingMessage("AI Analyzing Image...");
+
+                // 1. Upload first to get a public URL
+                const publicUrl = await uploadImage(file);
+
+                // 2. Call Backend Vision Agent
+                const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000';
+                const response = await fetch(`${BACKEND_URL}/analyze-image`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image_url: publicUrl }),
+                });
+
+                if (response.ok) {
+                    const analysis = await response.json();
+                    console.log("AI Analysis:", analysis);
+
+                    if (analysis.is_civic_issue) {
+                        setFormData(prev => ({
+                            ...prev,
+                            issue_type: analysis.issue_type || prev.issue_type,
+                            description: analysis.description || prev.description,
+                            priority: analysis.severity > 7 ? 'High' : analysis.severity > 4 ? 'Medium' : 'Low',
+                            image_url: publicUrl // Store the uploaded URL
+                        }));
+                        setAiSetPriority(true);
+                    } else {
+                        // REJECTION HANDLING
+                        alert(`⚠️ AI Validation Failed: ${analysis.rejection_reason || "Not a valid civic issue."}\n\nPlease upload a clear photo of a real-world civic issue.`);
+                        // Remove invalid image
+                        setImageFile(null);
+                        setPreviewUrl(null);
+                    }
+                }
+            } catch (err) {
+                console.error("AI Analysis failed:", err);
+                // Fail silently, user can still fill form manually
+            } finally {
+                setIsAnalyzing(false);
+            }
         }
     };
 
@@ -229,6 +277,7 @@ export default function ComplaintForm({ mappedData }) {
                         setFormData({ issue_type: '', description: '', location_text: '', priority: 'Medium', assigned_department: '', image_url: '' });
                         setImageFile(null);
                         setPreviewUrl(null);
+                        setAiSetPriority(false);
                     }}
                     className="px-8 py-3 bg-gray-900 text-white font-semibold rounded-xl hover:bg-black transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1"
                 >
@@ -318,8 +367,11 @@ export default function ComplaintForm({ mappedData }) {
                 </div>
 
                 {/* Upload Image */}
-                <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Evidence</label>
+                <div className={`transition-opacity duration-300 ${isAnalyzing ? 'opacity-50 pointer-events-none' : ''}`}>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex justify-between">
+                        Evidence
+                        {isAnalyzing && <span className="text-blue-500 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> AI Analyzing...</span>}
+                    </label>
 
                     {!previewUrl ? (
                         <div className="relative">
@@ -361,7 +413,10 @@ export default function ComplaintForm({ mappedData }) {
                         </div>
                     </div>
                     <div className="group">
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 group-focus-within:text-blue-500 transition-colors">Priority</label>
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 group-focus-within:text-blue-500 transition-colors flex items-center justify-between">
+                            Priority
+                            {aiSetPriority && <span className="text-[10px] bg-purple-100 text-purple-600 px-2 py-0.5 rounded-full border border-purple-200">✨ AI SET</span>}
+                        </label>
                         <div className="relative">
                             <div className={`absolute left-3 top-4 w-2 h-2 rounded-full ${formData.priority === 'High' ? 'bg-red-500' : formData.priority === 'Medium' ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
                             <select
@@ -389,10 +444,10 @@ export default function ComplaintForm({ mappedData }) {
                 {/* Submit */}
                 <button
                     onClick={handleSubmit}
-                    disabled={status === 'submitting'}
+                    disabled={status === 'submitting' || isAnalyzing}
                     className={`
                         w-full py-4 rounded-xl font-bold text-lg flex items-center justify-center gap-2 transition-all
-                        ${status === 'submitting'
+                        ${status === 'submitting' || isAnalyzing
                             ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                             : 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-xl shadow-blue-500/30 hover:shadow-2xl hover:-translate-y-0.5'
                         }
