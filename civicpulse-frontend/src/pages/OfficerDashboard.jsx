@@ -26,21 +26,28 @@ export default function OfficerDashboard() {
                 return;
             }
 
-            // Fetch Role AND Department
+            // 1. Check Metadata (Fastest)
+            const metaRole = user.user_metadata?.role;
+            const metaDept = user.user_metadata?.department;
+
+            // 2. Fetch from DB (Source of Truth)
             const { data, error } = await supabase
                 .from('profiles')
                 .select('role, department')
                 .eq('id', user.id)
                 .single();
 
-            if (data?.role === 'officer') {
-                console.log("Officer verified. Department:", data.department);
-                setOfficerDept(data.department); // Store department
+            const verifiedRole = data?.role || metaRole;
+            const verifiedDept = data?.department || metaDept;
+
+            if (verifiedRole === 'officer') {
+                console.log("Officer verified. Department:", verifiedDept);
+                setOfficerDept(verifiedDept); // Store department
+                setLoading(false);
             } else {
-                console.warn("Access denied.");
+                console.warn("Access denied. Role:", verifiedRole);
                 navigate('/dashboard');
             }
-            setLoading(false);
         };
 
         verifyOfficerAccess();
