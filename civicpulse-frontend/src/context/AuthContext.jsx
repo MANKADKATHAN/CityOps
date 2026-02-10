@@ -42,13 +42,15 @@ export const AuthProvider = ({ children }) => {
                 const currentUser = session?.user ?? null;
                 setUser(currentUser);
 
-                // If user exists, fetch role; but allow app to render immediately if user is null
+                // If user exists, try to get role instantly from metadata
                 if (currentUser) {
-                    // We can choose to wait for role here, OR let it load async
-                    // For better UX, let's wait a max of 1s, then show app
-                    const rolePromise = fetchRole(currentUser.id);
-                    const timeout = new Promise(r => setTimeout(r, 1000));
-                    await Promise.race([rolePromise, timeout]);
+                    const metaRole = currentUser.user_metadata?.role;
+                    if (metaRole) {
+                        setRole(metaRole); // Instant set
+                    }
+
+                    // Fetch from DB in background to confirm/update
+                    fetchRole(currentUser.id);
                 }
             } catch (error) {
                 console.warn("Auth initialization error:", error);

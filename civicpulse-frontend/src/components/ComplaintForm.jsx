@@ -88,14 +88,33 @@ export default function ComplaintForm({ mappedData }) {
                     console.log("AI Analysis:", analysis);
 
                     if (analysis.is_civic_issue) {
+                        // Construct a rich description with AI insights
+                        let richDescription = analysis.description || prev.description;
+                        if (analysis.required_action) {
+                            richDescription += `\n\n[AI SUGGESTED ACTION]: ${analysis.required_action}`;
+                        }
+
+                        // Smart Location Fill
+                        // If we have a GPS location, we keep it. But we can append context to the text field.
+                        let smartLocation = prev.location_text;
+                        if (analysis.location_context) {
+                            smartLocation = smartLocation ? `${smartLocation} (${analysis.location_context})` : analysis.location_context;
+                        }
+
                         setFormData(prev => ({
                             ...prev,
                             issue_type: analysis.issue_type || prev.issue_type,
-                            description: analysis.description || prev.description,
+                            description: richDescription,
+                            location_text: smartLocation || prev.location_text,
                             priority: analysis.severity > 7 ? 'High' : analysis.severity > 4 ? 'Medium' : 'Low',
-                            image_url: publicUrl // Store the uploaded URL
+                            image_url: publicUrl
                         }));
                         setAiSetPriority(true);
+
+                        // Optional: Alert user of the smart analysis
+                        if (analysis.required_action) {
+                            alert(`🤖 AI Analysis Complete!\n\nContext: ${analysis.location_context || "General Area"}\nAction Plan: ${analysis.required_action}`);
+                        }
                     } else {
                         // REJECTION HANDLING
                         alert(`⚠️ AI Validation Failed: ${analysis.rejection_reason || "Not a valid civic issue."}\n\nPlease upload a clear photo of a real-world civic issue.`);

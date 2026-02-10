@@ -112,7 +112,7 @@ def run_vision_agent(image_url: str) -> dict:
         model = genai.GenerativeModel('gemini-1.5-flash')
 
         prompt = """
-        You are a strict Smart City AI Inspector. 
+        You are a strict Smart City AI Inspector and Operations Planner. 
         Analyze this image to determine if it is a REAL-WORLD photo of a civic issue.
 
         CRITICAL VALIDATION STEPS:
@@ -128,12 +128,14 @@ def run_vision_agent(image_url: str) -> dict:
         If REJECTED:
         - Set "is_civic_issue" to false.
         - Set "rejection_reason" to the specific reason (e.g. "Cartoon/Digital Art detected", "Not a real photo", "No civic issue found").
-        - Set "issue_type" to "Other".
-
+        
         If ACCEPTED:
         - Set "is_civic_issue" to true.
-        - Set "rejection_reason" to null.
-        - Classify properly.
+        - Classify "issue_type" (Road, Garbage, Water, Streetlight, Other).
+        - Estimate "severity" (1-10).
+        - "location_context": Look at the background. Are there visible street signs, shop names, landmarks, or building types? (e.g. "Near Galaxy Store", "Highway", "Residential Street"). If none, say "Unknown Location".
+        - "required_action": Recommend the specific resource needed to fix this. 
+           - Examples: "Deploy Pothole Patching Crew", "Dispatch Dumpster Truck", "Send Electrician with Ladder", "Pipe Repair Team".
 
         Output valid JSON ONLY:
         {
@@ -141,7 +143,9 @@ def run_vision_agent(image_url: str) -> dict:
             "rejection_reason": stringOrNull,
             "issue_type": string, 
             "severity": integer, 
-            "description": string 
+            "description": string,
+            "location_context": string,
+            "required_action": string
         }
         """
 
@@ -163,5 +167,7 @@ def run_vision_agent(image_url: str) -> dict:
             "rejection_reason": "Analysis failed, please try again.",
             "issue_type": "General", 
             "severity": 0, 
-            "description": ""
+            "description": "",
+            "location_context": "",
+            "required_action": ""
         }
