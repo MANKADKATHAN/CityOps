@@ -386,6 +386,7 @@ export default function ComplaintForm({ mappedData }) {
                 </div>
 
                 {/* Upload Image */}
+                {/* Upload Image */}
                 <div className={`transition-opacity duration-300 ${isAnalyzing ? 'opacity-50 pointer-events-none' : ''}`}>
                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 flex justify-between">
                         Evidence
@@ -393,18 +394,40 @@ export default function ComplaintForm({ mappedData }) {
                     </label>
 
                     {!previewUrl ? (
-                        <div className="relative">
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleImageSelect}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                            />
-                            <div className="border-2 border-dashed border-gray-200 bg-gray-50 rounded-xl p-8 flex flex-col items-center justify-center text-gray-400 gap-3 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-400 transition-all group">
-                                <div className="p-3 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
-                                    <Upload className="w-5 h-5" />
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Option 1: Upload File */}
+                            <div className="relative">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageSelect}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                />
+                                <div className="border-2 border-dashed border-gray-200 bg-gray-50 rounded-xl p-6 flex flex-col items-center justify-center text-gray-400 gap-2 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-400 transition-all group h-32">
+                                    <div className="p-2 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                                        <Upload className="w-5 h-5" />
+                                    </div>
+                                    <span className="text-xs font-medium">Upload Photo</span>
                                 </div>
-                                <span className="text-xs font-medium">Click to upload photo</span>
+                            </div>
+
+                            {/* Option 2: Take Photo (Mobile Camera) */}
+                            <div className="relative">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment" // Forces rear camera on mobile
+                                    onChange={handleImageSelect}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                />
+                                <div className="border-2 border-dashed border-gray-200 bg-gray-50 rounded-xl p-6 flex flex-col items-center justify-center text-gray-400 gap-2 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-400 transition-all group h-32">
+                                    <div className="p-2 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                                        <div className="w-5 h-5 flex items-center justify-center bg-black rounded-full">
+                                            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                                        </div>
+                                    </div>
+                                    <span className="text-xs font-medium">Take Live Photo</span>
+                                </div>
                             </div>
                         </div>
                     ) : (
